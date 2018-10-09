@@ -11,13 +11,11 @@ import shutil
 #logging.warning('Ostrzeżenie:nie odnaleziono pliku konfiguracyjnego %s', 'server.conf')
 #logging.error('Wystąpił błąd')
 #logging.critical('Krytyczny błąd -- zakończenie działania')
-#
 ##def f():
 ##    try:    1/0
 ##    except: logging.exception('Wykryto problem')
 ##
 ##f()
-#
 #logger = logging.Logger('script')
 #stream_logger = logging.StreamHandler()
 #formatter = logging.Formatter('%(levelname).1s: %(message)s')
@@ -26,105 +24,91 @@ import shutil
 #logger.setLevel(logging.ERROR)
 
 class UI():
-    
     def zapytanie(argv=None):
         parser = argparse.ArgumentParser(description='W interfejscie UI mozesz wyszukać pacjenta badz badanie. Prosze wpisac imie i nazwisko pacjenta')
         Imie_pacjenta= parser.add_argument('-i','--imie', help='Podaj imie pacjenta', required=False)
         Nazwisko_pacjenta= parser.add_argument('-n','--nazwisko', help='Podaj nazwisko pacjenta',required=True)
         args = parser.parse_args()    
-        komunikat=print("Wyszukujemy badania dla:  %s %s" % (args.imie, args.nazwisko))
-        
+        komunikat=print("Wyszukujemy badania dla:  %s %s" % (args.imie, args.nazwisko))   
         #Wpisanie parametrów z UI do pustej worklisty
         with pydicom.dcmread("worklistquery2usuwanie_errorow5_138.dcm", force=True) as ds:
             ds.PatientName=args.imie +" "+ args.nazwisko
             lista_z_wypelnieniem=print(ds)
         return Imie_pacjenta,Nazwisko_pacjenta, komunikat, lista_z_wypelnieniem
           
+    
     def zrob_badanie():
-        ## podaj nr badania ktore chcesz wykonac z listy worklist rsp
-        potwierdzenie=input("Czy chcesz wykonać badanie dla tego pacjenta. Jesli tak, wpisz: y, jesli nie, wpisz: n : ")
-        
-        if potwierdzenie=="y":
+        #ma pobierac parametr ktory oznacza liczbe
+        #print lista z wypelnieniem
+        potwierdzenie=int(input("Podaj nr badania, które chcesz wykonać z listy: np. 0 "))
+        if potwierdzenie==0:
             wys=print("Zakończono sporządzanie danych do badania")
-        return wys
-        
-    def display():
-        wysw=print("?????????????")
-        return wysw
-########################################################################################################
+        return potwierdzenie
+       
 
 class controller():
-    def znajdz_badanie():
-#wysłanie response c-find -problem z zapisaniem response c-find
-# ale gdy bedzie plik, to czy program ma go tylko printować w IU?
-#czytanie dcm i print/ wyswietlenie listy na UI:
-        
+    def znajdz_badanie():    
         #wlmRsp0009.dcm jest z C:\Users\Anna\Documents\DVTk\Modality Emulator\Data\Worklist\WLM RSP\20180830132453
-        #proponuje wykorzystac to
         lista_zplikow=[]
         dsa= pydicom.dcmread("wlmRsp0009.dcm", force=True)
         lista_zplikow.append(dsa)
-        
         print(lista_zplikow)
         return lista_zplikow
         
-     #pobierz dane ze skanera
-    def pobierz_dane():
-#save obrazka
-        return 
         
     def pobierz_liste_badan():
-
-
-
         ncreate=pydicom.dcmread("mpps-inprogress1_1605_128_ref138_2.dcm", force=True)
-#        ncreate.PatientName="Jan Kowalski"
-#        Namepacjenta=ncreate.PatientName
-#        Idpacjenta=ncreate.PatientID
-#        Datastartu=ncreate.PerformedProcedureStepStartDate
-#        Datakonca=ncreate.PerformedProcedureStepEndDate
-#        AEtitle=ncreate.PerformedStationAETitle
-
-        #sciezka do pliku
         return
           
+    
     def status():
         time.sleep(1)
         wydruk=print("Sporządzono protokół")
         return 
         
         
-    def zapisz_koncowe_dane():
+    def zapisz_koncowe_dane(identyfikator):
         time.sleep(1)
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.procedura_zakonczona
+        Catalog.commit()
         print("Zapisano koncowe dane")
-
         return               
-############################################### 
+
+ 
 class scanner():
-    def scan():
+    def scan(identyfikator):
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.scanning
+        Catalog.commit()
         print("Trwa skanowanie pacjenta")
         return  
         
-    def scan_status():
+    
+    def scan_status(identyfikator):
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.finished_scanning
+        Catalog.commit()
         time.sleep(1)
+        print("Skan został wykonany")
         return 
-                     
-    def sent_scan_results():
-        time.sleep(1)
-        time.sleep(1)
 
+                     
+    def sent_scan_results(identyfikator):
+        time.sleep(1)
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.przeslanie_raw_data
+        Catalog.commit()
         source2 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\scanner\\id1.jpg"
         destination2 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\controller"
         shutil.copy(source2,destination2)
-
         infoo=print("Wyniki zostały przesłane do kontrolera")
-        
         rezultat = open('scan.txt', 'w')                                           #(1)
         rezultat.close()
         return rezultat
-#################################################################
+
+
 class cluster():
-    
     def pobieranie_danych_wejsciowych():
         time.sleep(1)
         source3 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\controller\\id1.jpg"
@@ -133,45 +117,65 @@ class cluster():
         print("Pobieranie danych wejsciowych do rekonstrukcji")
         # czytanei pliku z bazy danych
         return
+
         
-    def rekonstrukcja():
+    def rekonstrukcja(identyfikator):
         time.sleep(1)
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.reconstructing
+        Catalog.commit()
         print("Trwa rekonstrukcja")
         return
-         
-    def status_rekonstrukcji():
-        time.sleep(1)
-        
-        return 
-        
-    def anonimizacja():
-        time.sleep(1)
-        print("Trwa anonimizacja")
-        
-        return
-        
-    def status_anonimizacji():        
-        time.sleep(1)
-        
-        return 
-        
-    def deanonimizacja():
-        time.sleep(1)
-        print("Trwa deanonimizacje")
 
-        return
-        
-    def budowanie_koncowego_obrazu():
-        
          
-        os.rename('C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\id1.jpg','C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\koncowy.jpg') 
+    def status_rekonstrukcji(identyfikator):
+        time.sleep(1)
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.finished_reconstruction
+        Catalog.commit()
+        return 
+
         
+    def anonimizacja(identyfikator):
+        time.sleep(1)
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.trwa_anonimizacja
+        Catalog.commit()
+        print("Trwa anonimizacja")  
+        return
+    
+    
+    def status_anonimizacji(identyfikator):        
+        time.sleep(1)
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.finished_anonimization
+        Catalog.commit()
+        return 
+        
+    
+    def deanonimizacja(identyfikator):
+        time.sleep(1)
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.finished_analysis
+        Catalog.commit()
+        print("Trwa deanonimizacje")
+        return
+
+        
+    def budowanie_koncowego_obrazu(identyfikator):
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.wyslanie_koncowych_danych
+        Catalog.commit()
+        os.rename('C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\id1.jpg','C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\koncowy.jpg') 
         time.sleep(1)
         print("Trwa budowanie koncowego obrazu")
-
         return
 
-    def wyslanie_danych():
+
+    def wyslanie_danych_po_analizie(identyfikator):
+        badanie = Catalog.get(identyfikator)
+        badanie.status=Status.budowanie_koncowego_obrazu
+        Catalog.commit()
         source4 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\koncowy.jpg"
         destination4 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\controller"
         shutil.copy(source4,destination4)
@@ -180,77 +184,51 @@ class cluster():
         time.sleep(1)
         return
 
-#####################################################
-    
+     
 def run():
-    #zapytanie UI
     UI.zapytanie()
-    #controller.znajdz_badanie()
     moja_lista_badan=controller.znajdz_badanie()
-    UI.zrob_badanie()
-      
-    
-    
-    #utworz obiekt Badanie
-#    badanie= Catalog.newstudy(patient_name=moja_lista_badan[0].PatientName,
-#                              patient_id=moja_lista_badan[0].PatientID,
-#                              #moja_lista_badan[0].ScheduledProcedureStepStartDate,
-#                              #moja_lista_badan[0].PerformedProcedureStepEndDate,
-#                              #moja_lista_badan[0].PerformedStationAETitle,
-#                              end_date=None,
-#                              start_date=None,
-#                              aetitle=None,
-#                              status=None,
-#                              reconstructed_image=None,
-#                              raw_data_file=None)
-#    
+    liczba=UI.zrob_badanie()
+    #Tworzenie obiektu badanie
+    badanie_id= Catalog.newstudy(patient_name=str(moja_lista_badan[liczba].PatientName),
+                              patient_id=moja_lista_badan[liczba].PatientID,
+                              start_date=moja_lista_badan[liczba].ScheduledProcedureStepSequence[0].ScheduledProcedureStepStartDate,
+                              end_date=moja_lista_badan[liczba].ScheduledProcedureStepSequence[0].ScheduledProcedureStepEndDate,
+                              aetitle=moja_lista_badan[liczba].ScheduledProcedureStepSequence[0].ScheduledStationAETitle,
+                              status="new",
+                              reconstructed_image=None,
+                              raw_data_file=None)
     lista_konkre=controller.pobierz_liste_badan()
-    controller.status()
-    #if status_dicom=="INPROGRESS":
-    #    Catalog.update_inpro(Namepacjenta)
-   
-    
-    cykl=True
-    
+    controller.status()    
+    cykl=True   
     while(cykl):
-        
-        badanie=Study(new_study_record.id)
-        
+        badanie=Catalog.get(badanie_id)
         if badanie.status==Status.new:
-            scanner.scan()
+            scanner.scan(badanie_id)
+            print(badanie.status)
+            
         elif badanie.status==Status.scanning:        
-            scanner.scan_status()
+            scanner.scan_status(badanie_id)
         elif badanie.status==Status.finished_scanning:
-            time.sleep(2)
-            print("Skan został wykonany")
-            controller.pobierz_dane()
-            #wyslij surowe dane ze skanera do kontrolera modalnosci
-            scanner.sent_scan_results()
-            
+            #Wysyłanie surowych danych ze skanera do kontrolera modalnosci
+            scanner.sent_scan_results(badanie_id)            
         elif badanie.status==Status.przeslanie_raw_data:
-            #rekonstrukcja danych
             cluster.pobieranie_danych_wejsciowych()
-            cluster.rekonstrukcja()
-            
+            cluster.rekonstrukcja(badanie_id)            
         elif badanie.status==Status.reconstructing:
-            cluster.status_rekonstrukcji()
-            
+            cluster.status_rekonstrukcji(badanie_id)            
         elif badanie.status==Status.finished_reconstruction:
-            #anonimizacja danych
-            cluster.anonimizacja()
-            
+            cluster.anonimizacja(badanie_id)            
         elif badanie.status==Status.trwa_anonimizacja:
-            cluster.status_anonimizacji()
-            
+            cluster.status_anonimizacji(badanie_id)            
         elif badanie.status==Status.finished_anonimization:
-            cluster.budowanie_koncowego_obrazu()
-            
+            cluster.deanonimizacja(badanie_id)    
         elif badanie.status==Status.finished_analysis:
-            cluster.wyslanie_danych()
-            
+            cluster.wyslanie_danych_po_analizie(badanie_id)           
         elif badanie.status==Status.budowanie_koncowego_obrazu:
-            controller.zapisz_koncowe_dane()
-            #nie mam pliku c-store
+            cluster.budowanie_koncowego_obrazu(badanie_id)            
+        elif badanie.status==Status.wyslanie_koncowych_danych:
+            controller.zapisz_koncowe_dane(badanie_id)
         elif badanie.status==Status.procedura_zakonczona:
             cykl=False
     return
