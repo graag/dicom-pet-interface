@@ -1,235 +1,237 @@
+#Collection of libraries
 import pydicom
-#import logging
 from bazadanych2aa import Catalog, Study, Status
 import time
 import argparse
 import os
 import shutil
+import time
+import datetime
 
-#logging.debug('Informacje wspomagające debugowanie')
-#logging.info('Komunikat informacyjny')
-#logging.warning('Ostrzeżenie:nie odnaleziono pliku konfiguracyjnego %s', 'server.conf')
-#logging.error('Wystąpił błąd')
-#logging.critical('Krytyczny błąd -- zakończenie działania')
-##def f():
-##    try:    1/0
-##    except: logging.exception('Wykryto problem')
-##
-##f()
-#logger = logging.Logger('script')
-#stream_logger = logging.StreamHandler()
-#formatter = logging.Formatter('%(levelname).1s: %(message)s')
-#stream_logger.setFormatter(formatter)
-#logger.addHandler(stream_logger)
-#logger.setLevel(logging.ERROR)
-
-class UI():
-    def zapytanie(argv=None):
-        parser = argparse.ArgumentParser(description='W interfejscie UI mozesz wyszukać pacjenta badz badanie. Prosze wpisac imie i nazwisko pacjenta')
-        Imie_pacjenta= parser.add_argument('-i','--imie', help='Podaj imie pacjenta', required=False)
-        Nazwisko_pacjenta= parser.add_argument('-n','--nazwisko', help='Podaj nazwisko pacjenta',required=True)
-        args = parser.parse_args()    
-        komunikat=print("Wyszukujemy badania dla:  %s %s" % (args.imie, args.nazwisko))   
-        #Wpisanie parametrów z UI do pustej worklisty
-        with pydicom.dcmread("worklistquery2usuwanie_errorow5_138.dcm", force=True) as ds:
-            ds.PatientName=args.imie +" "+ args.nazwisko
-            lista_z_wypelnieniem=print(ds)
-        return Imie_pacjenta,Nazwisko_pacjenta, komunikat, lista_z_wypelnieniem
-          
-    
-    def zrob_badanie():
-        #ma pobierac parametr ktory oznacza liczbe
-        #print lista z wypelnieniem
-        potwierdzenie=int(input("Podaj nr badania, które chcesz wykonać z listy: np. 0 "))
-        if potwierdzenie==0:
-            wys=print("Zakończono sporządzanie danych do badania")
-        return potwierdzenie
-       
-
+#Controller class
 class controller():
-    def znajdz_badanie():    
-        #wlmRsp0009.dcm jest z C:\Users\Anna\Documents\DVTk\Modality Emulator\Data\Worklist\WLM RSP\20180830132453
-        lista_zplikow=[]
-        dsa= pydicom.dcmread("wlmRsp0009.dcm", force=True)
-        lista_zplikow.append(dsa)
-        print(lista_zplikow)
-        return lista_zplikow
+    def find_study():    
+        list_of_files=[]
+        dicom_file= pydicom.dcmread("worklist_rsp.dcm", force=True)
+        list_of_files.append(dicom_file)
+        print(list_of_files)
+        return list_of_files
         
         
-    def pobierz_liste_badan():
-        ncreate=pydicom.dcmread("mpps-inprogress1_1605_128_ref138_2.dcm", force=True)
+    def get_study_list(identifier):
+        ncreate=pydicom.dcmread("mpps2.dcm", force=True)
+        examination= Catalog.get(identifier)
+        examination.path="C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\"
+        Catalog.commit()
         return
           
     
     def status():
         time.sleep(1)
-        wydruk=print("Sporządzono protokół")
-        return 
+        return print("The protocol has been prepared")
         
         
-    def zapisz_koncowe_dane(identyfikator):
+    def save_final_data(identifier):
         time.sleep(1)
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.procedura_zakonczona
+        examination= Catalog.get(identifier)
+        examination.status=Status.procedure_completed
         Catalog.commit()
-        print("Zapisano koncowe dane")
+        print("Final data are saved")
         return               
 
- 
-class scanner():
-    def scan(identyfikator):
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.scanning
+   #Building final image and deanonymisation     
+    def build_final_image(identifier):
+        examination = Catalog.get(identifier)
+        examination.status=Status.build_final_image
         Catalog.commit()
-        print("Trwa skanowanie pacjenta")
-        return  
+#zmien sciezke
+        pie='C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\id1.jpg'
+        dru='C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\koncowy.jpg'
         
-    
-    def scan_status(identyfikator):
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.finished_scanning
-        Catalog.commit()
-        time.sleep(1)
-        print("Skan został wykonany")
-        return 
-
-                     
-    def sent_scan_results(identyfikator):
-        time.sleep(1)
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.przeslanie_raw_data
-        Catalog.commit()
-        source2 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\scanner\\id1.jpg"
-        destination2 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\controller"
-        shutil.copy(source2,destination2)
-        infoo=print("Wyniki zostały przesłane do kontrolera")
-        rezultat = open('scan.txt', 'w')                                           #(1)
-        rezultat.close()
-        return rezultat
-
-
-class cluster():
-    def pobieranie_danych_wejsciowych():
-        time.sleep(1)
-        source3 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\controller\\id1.jpg"
-        destination3 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster"
-        shutil.copy(source3,destination3)
-        print("Pobieranie danych wejsciowych do rekonstrukcji")
-        # czytanei pliku z bazy danych
-        return
-
+        os.rename(pie,dru) 
         
-    def rekonstrukcja(identyfikator):
-        time.sleep(1)
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.reconstructing
-        Catalog.commit()
-        print("Trwa rekonstrukcja")
-        return
-
-         
-    def status_rekonstrukcji(identyfikator):
-        time.sleep(1)
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.finished_reconstruction
-        Catalog.commit()
-        return 
-
-        
-    def anonimizacja(identyfikator):
-        time.sleep(1)
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.trwa_anonimizacja
-        Catalog.commit()
-        print("Trwa anonimizacja")  
-        return
-    
-    
-    def status_anonimizacji(identyfikator):        
-        time.sleep(1)
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.finished_anonimization
-        Catalog.commit()
-        return 
-        
-    
-    def deanonimizacja(identyfikator):
-        time.sleep(1)
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.finished_analysis
-        Catalog.commit()
-        print("Trwa deanonimizacje")
-        return
-
-        
-    def budowanie_koncowego_obrazu(identyfikator):
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.wyslanie_koncowych_danych
-        Catalog.commit()
-        os.rename('C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\id1.jpg','C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\koncowy.jpg') 
         time.sleep(1)
         print("Trwa budowanie koncowego obrazu")
         return
 
 
-    def wyslanie_danych_po_analizie(identyfikator):
-        badanie = Catalog.get(identyfikator)
-        badanie.status=Status.budowanie_koncowego_obrazu
-        Catalog.commit()
-        source4 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\koncowy.jpg"
-        destination4 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\controller"
-        shutil.copy(source4,destination4)
-               
-        print("Wyniki zostaly przeslane")
-        time.sleep(1)
-        return
 
-     
+#Scanner class 
+class scanner():
+    #Communication with scanner PET 
+    def scan(identifier):
+        examination = Catalog.get(identifier)
+        examination.status=Status.scanning
+        Catalog.commit()
+        return print("Scanning patient")  
+        
+    # Current scan status verification  
+    def scan_status(identifier):
+        examination = Catalog.get(identifier)
+        examination.status=Status.finished_scanning
+        Catalog.commit()
+        time.sleep(1)
+        return print("The Scan was executed") 
+
+    # Sending scan results from scanner PET to controller                 
+    def send_scan_results(identifier):
+        time.sleep(1)
+        examination = Catalog.get(identifier)
+        examination.status=Status.send_raw_data
+        Catalog.commit()
+        scanner_pet = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\scanner\\id1.jpg"
+        examination.raw_data_file = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\controller"
+        shutil.copy(scanner_pet,examination.raw_data_file)
+        
+        
+        #usun?
+        #result = open('scan.txt', 'w')                                           #(1)
+        #data=result.read()
+        #result.close()
+        return print("The results were sent to the controller")#,data
+         
+#User interface Class
+class UI():
+    def query(argv=None):
+        parser = argparse.ArgumentParser(description='There is User Interface. You can find patient or examination. Type in patient name and surname')
+        Patient_name= parser.add_argument('-n','--name', help='Please, type in patient name', required=False)
+        Patient_surname= parser.add_argument('-s','--surname', help='Please, type in patient surname',required=True)
+        args = parser.parse_args()    
+        text=print("Finding examination for:  %s %s" % (args.name, args.surname))   
+        #Entering parameters from UI to the empty worklist
+        with pydicom.dcmread("worklist_query.dcm", force=True) as ds:
+            ds.PatientName=args.name +" "+ args.surname
+            return Patient_name,Patient_surname, text, print(ds)
+          
+    
+    def do_study(list_of_studies):
+        while True:
+            try:
+                confirmation=int(input("Specify number of examination which you want to commision: "))
+                if confirmation<=int(len(list_of_studies)-1):
+                    wys=print("Zakończono sporządzanie danych do badania")
+                    break
+                else:
+                    print("Incorrect number of examination, try again")
+            except (ValueError, UnboundLocalError):
+                print("You don't type integer, try again")
+            except IndexError:
+                print("Incorrect number of examination, try again")
+        return confirmation
+    
+    
+    def communique(identifier):
+        return print("The test failed")
+
+# Cluster class
+class cluster():
+    #Sending input data from controller to cluster
+    def send_input_data(identifier):
+        time.sleep(1)
+        source3 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\controller\\id1.jpg"
+        destination3 = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster"
+        shutil.copy(source3,destination3)
+        # czytanei pliku z bazy danych
+        examination = Catalog.get(identifier)
+        examination.status=Status.reco_data_ready
+        Catalog.commit()
+        return print("Downloading input data for reconstruction")
+
+    #Reconstruction registered    
+    def register(identifier):
+        time.sleep(1)
+        examination = Catalog.get(identifier)
+        examination.status=Status.reco_registered
+        Catalog.commit()
+        return print("Reconstruction registered")
+
+    #Reconstruction queued
+    def start_reconstruction(identifier):
+        time.sleep(1)
+        examination = Catalog.get(identifier)
+        examination.status=Status.reco_queued
+        Catalog.commit()
+        return print("Reconstruction queued")
+    
+    #
+    def status(identifier):
+        time.sleep(1)
+        examination = Catalog.get(identifier)
+#        if examination.status==Status.reco_queued:
+#            examination.status=Status.reco_running
+#        elif examination.status==Status.reco_running:
+        examination.status=Status.reco_finished        
+        Catalog.commit()
+        return 
+
+    # Data anonymisation    
+    def anonymisation(identifier):
+        time.sleep(1)
+        examination = Catalog.get(identifier)
+        examination.status=Status.finished_anonymisation
+        Catalog.commit()
+        return
+    
+    # Get final output data from cluster to controller
+    def get_output_data(identifier):
+        examination = Catalog.get(identifier)
+        examination.status=Status.send_final_data
+        Catalog.commit()
+        cluster = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\cluster\\koncowy.jpg"
+        examination.final_image = "C:\\Users\\Anna\\Desktop\\pynetdicom_git_clone\\pynetdicom3\\pynetdicom3\\apps\\findscu\\controller"
+        shutil.copy(cluster,examination.final_image)
+        time.sleep(1)
+        return print("The results have been sent")
+
+
+# Core mechanism     
 def run():
-    UI.zapytanie()
-    moja_lista_badan=controller.znajdz_badanie()
-    liczba=UI.zrob_badanie()
-    #Tworzenie obiektu badanie
-    badanie_id= Catalog.newstudy(patient_name=str(moja_lista_badan[liczba].PatientName),
-                              patient_id=moja_lista_badan[liczba].PatientID,
-                              start_date=moja_lista_badan[liczba].ScheduledProcedureStepSequence[0].ScheduledProcedureStepStartDate,
-                              end_date=moja_lista_badan[liczba].ScheduledProcedureStepSequence[0].ScheduledProcedureStepEndDate,
-                              aetitle=moja_lista_badan[liczba].ScheduledProcedureStepSequence[0].ScheduledStationAETitle,
+    UI.query()
+    list_of_examinations=controller.find_study()
+    number=UI.do_study(list_of_examinations)
+    # Creating the examination object:
+    examination_id= Catalog.newstudy(patient_name=str(list_of_examinations[number].PatientName),
+                              patient_id=list_of_examinations[number].PatientID,
+                              start_date=datetime.datetime.strptime(list_of_examinations[number].ScheduledProcedureStepSequence[0].ScheduledProcedureStepStartDate,'%Y%m%d'),
+                              end_date=datetime.datetime.strptime(list_of_examinations[number].ScheduledProcedureStepSequence[0].ScheduledProcedureStepEndDate,'%Y%m%d'),
+                              aetitle=list_of_examinations[number].ScheduledProcedureStepSequence[0].ScheduledStationAETitle,
                               status="new",
-                              reconstructed_image=None,
-                              raw_data_file=None)
-    lista_konkre=controller.pobierz_liste_badan()
+                              final_image=None,
+                              raw_data_file=None,
+                              path_mpps=None)
+    controller.get_study_list(examination_id)
     controller.status()    
-    cykl=True   
-    while(cykl):
-        badanie=Catalog.get(badanie_id)
-        if badanie.status==Status.new:
-            scanner.scan(badanie_id)
-            print(badanie.status)
-            
-        elif badanie.status==Status.scanning:        
-            scanner.scan_status(badanie_id)
-        elif badanie.status==Status.finished_scanning:
-            #Wysyłanie surowych danych ze skanera do kontrolera modalnosci
-            scanner.sent_scan_results(badanie_id)            
-        elif badanie.status==Status.przeslanie_raw_data:
-            cluster.pobieranie_danych_wejsciowych()
-            cluster.rekonstrukcja(badanie_id)            
-        elif badanie.status==Status.reconstructing:
-            cluster.status_rekonstrukcji(badanie_id)            
-        elif badanie.status==Status.finished_reconstruction:
-            cluster.anonimizacja(badanie_id)            
-        elif badanie.status==Status.trwa_anonimizacja:
-            cluster.status_anonimizacji(badanie_id)            
-        elif badanie.status==Status.finished_anonimization:
-            cluster.deanonimizacja(badanie_id)    
-        elif badanie.status==Status.finished_analysis:
-            cluster.wyslanie_danych_po_analizie(badanie_id)           
-        elif badanie.status==Status.budowanie_koncowego_obrazu:
-            cluster.budowanie_koncowego_obrazu(badanie_id)            
-        elif badanie.status==Status.wyslanie_koncowych_danych:
-            controller.zapisz_koncowe_dane(badanie_id)
-        elif badanie.status==Status.procedura_zakonczona:
-            cykl=False
+    loop=True   
+    while(loop):
+        examination=Catalog.get(examination_id)
+        if examination.status==Status.new:
+            scanner.scan(examination_id)
+            print(examination.status)
+        elif examination.status==Status.scanning:        
+            scanner.scan_status(examination_id)
+        elif examination.status==Status.finished_scanning:
+            #Sending raw data from the scanner to the controller
+            scanner.send_scan_results(examination_id)            
+        elif examination.status==Status.send_raw_data:
+            cluster.anonymisation(examination_id)            
+        elif examination.status==Status.finished_anonymisation:   
+            cluster.register(examination_id)
+        elif examination.status==Status.reco_registered:
+            cluster.send_input_data(examination_id)
+        elif examination.status==Status.reco_data_ready:
+            cluster.start_reconstruction(examination_id)
+        elif examination.status==Status.reco_queued or examination.status == Status.reco_running:    
+            cluster.status(examination_id)
+        elif examination.status==Status.reco_finished:
+            controller.build_final_image(examination_id)                
+        elif examination.status==Status.build_final_image:
+            cluster.get_output_data(examination_id)           
+        elif examination.status==Status.send_final_data:
+            controller.save_final_data(examination_id)
+        elif examination.status==Status.procedure_completed:
+            loop=False
+        elif examination.status==Status.failed:
+            UI.communique(examination_id)
+            loop=False
     return
 run()    
