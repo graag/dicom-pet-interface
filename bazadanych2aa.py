@@ -1,115 +1,116 @@
-#SQLAlchemy is a set of tools for working with databases and Python.
-#It consists of SQL tools and ORM– Object Relational Mapper.
-#Collection of libraries
+#SQLAlchemy jest zbiorem narzędzi do pracy z bazami danych i Pythonem.
+#Składa się z narzędzi SQL oraz mapowania obiektowo-relacyjnego -ORM.
+#Zbior bibliotek
 from sqlalchemy.orm import sessionmaker
-#Importing the Column class and data types in the database (Integer, String, Date)
 from sqlalchemy import Enum, create_engine, Column, Integer, String, Date
 from sqlalchemy.ext.declarative import declarative_base
 import enum
 from sqlalchemy import DateTime
-#Connecting wih in-memory-only SQLite database
+
+#Połączenie z bazą danych SQLite.
 sqlite_db = create_engine('sqlite:///memory', echo=True)
-#Base class constructor for defining the rest of classes.
+
+#Kontruktor podstawowej klasy do definiowania innych klas
 Base = declarative_base()
-#Create a configured "Session" class
+
+#Stworzenie skonfigurowanej klase Sesja
 Session = sessionmaker(bind=sqlite_db)
-#Create a Session
+#Tworzenie sesji
 session = Session()
 
-# Class for creating enumerated constants, in this case: various status of examination
+# Klasa status do tworzenia liczbowych zmiennych, w tym przypadku różnych statusów badania
 class Status(enum.Enum):
     new = 1 
-    scanning = 2
-    finished_scanning = 3
-    send_raw_data=4
-    reco_registered = 5
-    reco_data_ready=6
-    reco_queued=7
-    reco_running = 8
-    reco_finished=9    
-    finished_anonymisation=10
-    build_final_image=11
-    send_final_data=12
-    procedure_completed=13
-    failed=14
+    dicom_inprogress=2
+    scanning = 3
+    finished_scanning = 4
+    send_raw_data=5
+    reco_registered = 6
+    reco_data_ready=7
+    reco_queued=8
+    reco_running = 9
+    reco_finished=10   
+    finished_anonymisation=11
+    build_final_image=12
+    send_final_data=13
+    dicom_completed=14
+    procedure_completed=15
+    failed=16
+    
 
-#Class for creating columns and specifing type of columns
+#Klasa do definiowania kolumn w bazie danych oraz okreslania ich typu
 class Study(Base):
     __tablename__ = 'Study'
     id = Column(Integer, primary_key=True, unique=True,nullable=False)
     patient_name=Column(String)
     patient_id=Column(String)
+    patients_sex=Column(String)
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     aetitle=Column(String)
-    status = Column(Enum(Status))
+    accession_number=Column(String)
+    requested_procedure_id=Column(String)
+    status = Column(Enum(Status),default=Status.new)
     raw_data_file=Column(String)
     final_image=Column(String)
     path_mpps=Column(String)
-#
+    #Metoda okreslajaca w jaki sposob prezentowane maja byc dane
     def __repr__(self):
-        return "<{'%s':('%s','%s', '%s','%s','%s',,'%s','%s','%s','%s')}>" % (self.id,self.patient_name,self.patient_id, self.start_date, self.end_date, self.aetitle, self.status, self.final_image, self.raw_data_file,self.path_mpps)
+        return "<{'%s':('%s','%s', '%s','%s','%s',,'%s','%s','%s','%s','%s','%s','%s')}>" % (self.id,self.patient_name,self.patient_id, self.patients_sex, self.start_date, self.end_date, self.aetitle, self.accession_number, self.requested_procedure_id, self.status, self.final_image, self.raw_data_file,self.path_mpps)
 
 Base.metadata.create_all(sqlite_db)
     
-#Class for defining metods to create new study, commit session, get study.
+#Klasa Catalog, w której definiowane są funkcje, dzięki którym można utworzyć nowe badanie, zatwierdzić sesję, pobrać badanie, filtrować wyniki m.in. po statusach, usunać badanie. 
 class Catalog:
+    #Pobieranie badania o id, które jest parametrem
     def get(number):
         return session.query(Study).filter(Study.id==number).one()
     
-    
+    #Zatwierdzanie sesji
     def commit():
         session.commit()
         
+    #Metoda do tworzenia nowego badania    
     def newstudy(patient_name,
                  patient_id,
+                 patients_sex,
                  start_date, 
                  end_date, 
                  aetitle,
-                 status,
+                 accession_number,
+                 requested_procedure_id,
                  final_image,
                  raw_data_file,
                  path_mpps):
-        
+        #Tworzenie nowego rekordu w bazie danych
         new_study_record=Study(patient_name=patient_name,
                                patient_id=patient_id,
+                               patients_sex=patients_sex,
                                start_date=start_date, 
                                end_date=end_date, 
-                               aetitle=aetitle, 
-                               #status='new', jest w skrypt2.py 184 wiersz
-                               status=status, 
+                               aetitle=aetitle,
+                               accession_number=accession_number,
+                               requested_procedure_id=requested_procedure_id,
                                final_image=final_image,
                                raw_data_file=raw_data_file,
                                path_mpps=path_mpps)
+        #Dodawanie nowego rekordu do bazy danych
         session.add(new_study_record)   
+        #Zatwierdzanie sesji
         session.commit()
         return new_study_record.id
   
 
-#Usunąć?
-#
-#Tak na prawdę zamień te wszystkie na return_* (oprócz return_all) na return_with_status który pobiera parametr status.
-##W ten sposób będzie można zrobić: studies = Catalog.get_with_status(Status.new)
-##Obecny kod i tak nie działa bo statusy są string-ami a powinny być Enum
-
+    #Metoda zwracajaca wszystkie rekordy z bazy danych
     def return_all():
         return session.query(Study).all()
-  
-    
-    def return_discontinued():
-        return session.query(Study).filter_by(status='DISCONTINUED').all()
-    
-    
-    def return_completed():
-        return session.query(Study).filter_by(status='COMPLETED').all()
-    
-    
-    def return_inprogress():
-        return session.query(Study).filter_by(status='INPROGRESS').all()
 
-                
+    #Metoda zwracająca rekordy w zaleznosci od statusu
+    def return_with_status(study_status):
+        return session.query(Study).filter_by(study_status).all()
+
+    #Metoda pozwalajaca usuwac rekordy w zaleznosci od wskazanego id
     def delete_study(number):
         session.query(Study).filter(Study.id==number).delete()
         session.commit()
-        show=print("You deleted patient nr ",number)
-        return(show)
+        print("You deleted patient nr ",number)
